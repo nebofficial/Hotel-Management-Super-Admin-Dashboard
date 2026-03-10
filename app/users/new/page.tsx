@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Users, ArrowLeft } from "lucide-react"
+import { ProtectedRoute } from "@/components/protected-route"
 
 interface Hotel {
   id: string
