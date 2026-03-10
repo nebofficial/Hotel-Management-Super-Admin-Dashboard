@@ -28,14 +28,14 @@ export default function LoginPage() {
     setError("")
 
     try {
-      const success = await login(formData.email, formData.password)
-      if (success) {
+      const result = await login(formData.email, formData.password)
+      if (result.success) {
         router.push("/")
       } else {
-        setError("Invalid credentials or access denied. Only super admin can access this dashboard.")
+        setError(result.message ?? "Invalid credentials or access denied. Only super admin can access this dashboard.")
       }
     } catch (err) {
-      setError("An error occurred. Please try again.")
+      setError(err instanceof Error ? err.message : "An error occurred. Please try again.")
     } finally {
       setLoading(false)
     }

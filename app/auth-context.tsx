@@ -16,7 +16,7 @@ interface User {
 interface AuthContextType {
   user: User | null
   loading: boolean
-  login: (email: string, password: string) => Promise<boolean>
+  login: (email: string, password: string) => Promise<{ success: boolean; message?: string }>
   logout: () => void
   refreshUser: () => Promise<void>
 }
@@ -96,7 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = async (email: string, password: string): Promise<{ success: boolean; message?: string }> => {
     try {
       const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
       const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
@@ -109,37 +109,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ message: "Network error" }))
-        console.error("Login failed:", errorData)
-        return false
+        const msg =
+          errorData?.message ||
+          errorData?.error ||
+          (typeof errorData === "object" && Object.keys(errorData).length === 0
+            ? "Invalid credentials or server error. Please try again."
+            : String(errorData))
+        return { success: false, message: msg }
       }
 
       const data = await response.json()
 
       if (data.token) {
-        // Check if user is super_admin
-        if (data.user.role !== "super_admin") {
-          console.error("Access denied: Only super admin can access this dashboard")
-          return false
+        if (data.user?.role !== "super_admin") {
+          return { success: false, message: "Access denied. Only super admin can access this dashboard." }
         }
 
         localStorage.setItem("token", data.token)
         localStorage.setItem("user", JSON.stringify(data.user))
         setUser(data.user)
-        return true
-      } else {
-        console.error("No token in response:", data)
-        return false
+        return { success: true }
       }
+
+      return { success: false, message: "Invalid response from server. Please try again." }
     } catch (error) {
-      console.error("Login error:", error)
-      // Check if it's a network error
-      if (error instanceof TypeError && error.message === "Failed to fetch") {
-        console.error("Backend server might not be running. Please check:")
-        console.error("1. Backend server is running on port 5000")
-        console.error("2. CORS is properly configured")
-        console.error("3. Network connectivity is available")
-      }
-      return false
+      const isNetworkError = error instanceof TypeError && error.message === "Failed to fetch"
+      const msg = isNetworkError
+        ? "Cannot reach server. Ensure the backend is running on port 5000 and CORS is configured."
+        : "An unexpected error occurred. Please try again."
+      return { success: false, message: msg }
     }
   }
 
